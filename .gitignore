@@ -1,9 +1,19 @@
 # ===================== 构建产物 =====================
 build/
+**/build/
+!**/src/**/build/
 out/
 .gradle/
 .kotlin/
 *.iml
+
+# Gradle GUI 配置与缓存
+gradle-app.setting
+.gradletasknamecache
+
+# 不要忽略 Gradle Wrapper（.jar 常被一并忽略，这里显式保留）
+!gradle-wrapper.jar
+!gradle-wrapper.properties
 
 # ===================== IDEA 本机配置 =====================
 .idea/
@@ -30,6 +40,10 @@ gen6/
 gen11/
 untitled/
 _*.txt
+
+# ===================== Eclipse =====================
+.project
+.classpath
 
 # ===================== 其他 =====================
 .DS_Store
