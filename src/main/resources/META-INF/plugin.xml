@@ -1,0 +1,34 @@
+<idea-plugin>
+    <id>com.example.jakartaee.generator</id>
+    <name>saber</name>
+    <version>1.2.4</version>
+    <vendor email="example@example.com">Example</vendor>
+
+    <description><![CDATA[
+        <p>一键生成 Jakarta-EE Maven Web 教学模板</p>
+        <p>在「新建项目」面板多出 <b>Jakarta EE</b> 选项，自动生成带完整中文注释的项目骨架：
+           pom.xml、web.xml、index.html、README.md，以及 4 个示例 Servlet。</p>
+        <p>社区版（IC）即可用，仅生成磁盘文件，无旗舰版 EE 语法提示。</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- 2026 版「新建项目」生成器：让条目出现在左侧「生成器」面板 -->
+        <newProjectWizard.generator implementation="com.example.generator.JakartaEeGeneratorWizard"/>
+    </extensions>
+
+    <actions>
+        <!--
+          环境体检：生成的项目启动 Tomcat 失败时，用它先查一遍。
+          检查 tomcat.home 目录与本地 Maven 仓库里的 cargo 依赖是否齐全，
+          缺哪个 jar 会直接列出来并给出修复命令。
+        -->
+        <action id="com.example.generator.CheckEnvironmentAction"
+                class="com.example.generator.CheckEnvironmentAction"
+                text="检查 Tomcat / cargo 运行环境"
+                description="检查 tomcat.home 与本地 Maven 仓库中的 cargo 依赖是否就绪">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

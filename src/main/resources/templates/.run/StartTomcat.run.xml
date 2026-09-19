@@ -1,0 +1,45 @@
+<component name="ProjectRunConfigurationManager">
+  <!--
+    这是一个「共享运行配置」，放在项目根目录的 .run/ 下。
+    IDEA 打开项目后会自动读取，出现在右上角的运行配置下拉框里，
+    点一下绿色三角形（或按 Shift+F10）即可启动，等于执行：
+        mvn clean package cargo:run
+
+    社区版（Community）和旗舰版（Ultimate）都支持 .run 目录，所以社区版也能用。
+
+    停止：点运行窗口左侧的红色方块（Stop），或按 Ctrl+F2。
+    启动后浏览器访问：http://localhost:8080/demo1_war_exploded/
+  -->
+  <configuration default="false" name="启动 Tomcat（demo1）" type="MavenRunConfiguration" factoryName="Maven">
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings" />
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="cmdOptions" />
+          <option name="profiles">
+            <set />
+          </option>
+          <option name="goals">
+            <list>
+              <option value="clean" />
+              <option value="package" />
+              <option value="cargo:run" />
+            </list>
+          </option>
+          <option name="multimoduleDir" />
+          <option name="pomFileName" />
+          <option name="profilesMap">
+            <map />
+          </option>
+          <option name="projectsCmdOptionValues">
+            <list />
+          </option>
+          <option name="resolveToWorkspace" value="false" />
+          <option name="workingDirPath" value="$PROJECT_DIR$" />
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+    <method v="2" />
+  </configuration>
+</component>

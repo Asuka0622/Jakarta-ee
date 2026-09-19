@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+   pom.xml —— Maven 项目描述文件（Project Object Model）
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Maven 靠这个文件知道四件事：
+     1. 项目叫什么（坐标 GAV）
+     2. 打成什么格式的包（jar / war）
+     3. 依赖哪些第三方库
+     4. 构建时用哪些插件、按什么规则编译打包
+
+   ⚠️ 关于「哪些能省」的实测结论：
+      文件末尾 plugins 里的两个插件**都不能省**，省了就打包失败。
+      具体报错和原因写在那两段注释里，都是实测出来的，不是推测。
+
+   常用命令（在项目根目录执行）：
+     mvn clean            清理 target 目录
+     mvn compile          只编译
+     mvn package          编译 + 打包，产物在 target/ 下
+     mvn clean package    先清理再打包（最常用）
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- POM 模型版本。Maven 2 之后固定是 4.0.0，不要改 -->
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ======================= 项目坐标（GAV） =======================
+         groupId    : 组织/域名的倒写，用来区分不同团队的项目
+         artifactId : 项目名，同时也是打出来的包名
+         version    : 版本号，SNAPSHOT 表示「开发中的快照版」，正式发布去掉它
+         packaging  : war  = Web 应用（可部署到 Tomcat）
+                      jar  = 普通 Java 程序/工具库
+         ⚠️ 换成自己的项目时，这三项一定要改。
+    -->
+    <groupId>com.example</groupId>
+    <artifactId>demo1</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <!-- 项目名称与描述，只是给人看的，不影响构建 -->
+    <name>demo1</name>
+    <description>Jakarta EE Web 教学模板</description>
+
+    <!-- ======================= 全局属性 =======================
+         这里定义的属性可以在文件下方用 ${属性名} 的方式引用。
+         好处：改一处，全项目生效（比如统一升级 Java 版本）。
+    -->
+    <properties>
+        <!-- 用哪个 Java 版本编译源码。17 是 LTS；Tomcat 11 最低要求 Java 17 -->
+        <maven.compiler.release>17</maven.compiler.release>
+        <!-- 源码文件编码。不写这一行，Windows 上中文注释会被编译成乱码 -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- 生成报告/文档时的编码，一般与源码保持一致 -->
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- 本机 Tomcat 安装目录，给下面 cargo 插件启动服务时用。
+             生成项目时插件会自动探测本机 Tomcat 并填入；
+             如果探测不到，这里会是一句提示文字，需要你改成实际目录。
+             ⚠️ 换电脑后也要改这一行，或者不改文件、用命令行覆盖：
+                   mvn clean package cargo:run -Dtomcat.home=新的目录
+             不知道怎么改：IDEA 里执行 Tools →「检查 Tomcat / cargo 运行环境」，
+             它会指出问题并带你选目录、自动写回这里。
+             用正斜杠 / 或双反斜杠 \\ 都可以，别用单个反斜杠。 -->
+        <tomcat.home>@@TOMCAT_HOME@@</tomcat.home>
+    </properties>
+
+    <!-- ======================= 依赖 =======================
+         一条 dependency 用三个坐标定位一个库：groupId + artifactId + version
+    -->
+    <dependencies>
+
+        <!-- Jakarta Servlet API：写 HttpServlet 必须的接口/抽象类。
+             scope = provided 的含义：
+               编译时需要它（否则 HttpServlet 找不到），
+               但打包时不放进 war，因为 Tomcat 自带这个库。
+               如果误写成 compile，war 包里会多一份 servlet-api.jar，
+               部署时可能与容器的版本冲突，出现各种诡异错误。
+             ⚠️ 注意包名是 jakarta.servlet，不是老的 javax.servlet。
+                Tomcat 10 之后统一改成了 jakarta.*，两者不能混用。
+        -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+    </dependencies>
+
+    <!-- ======================= 构建配置 ======================= -->
+    <build>
+
+        <!-- 打出来的 war 包文件名（不含 .war 后缀）：最终产物是 target/demo1.war。
+             注意「war 文件名」和「访问路径」不是一回事：
+               · 用 cargo 插件或 IDEA 部署时，上下文路径固定为 /demo1_war_exploded
+                 （见下面 cargo 插件的 deployables 配置），
+                 访问地址是 http://localhost:8080/demo1_war_exploded/
+               · 只有手动把 demo1.war 拷进 Tomcat 的 webapps 时，上下文才是 /demo1 -->
+        <finalName>demo1</finalName>
+
+        <!--
+          ======================================================================
+           构建插件 plugins
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+           一共三个插件，各有分工：
+
+             1. maven-compiler-plugin  编译必需，不能删
+             2. maven-war-plugin       打 war 必需，不能删
+                （上面两个不能注释掉的原因：Maven 默认绑定的版本太老，
+                  Maven 3.8 默认编译插件 3.1、war 插件 2.2，都不兼容 JDK 17，
+                  实测报错见各自的注释）
+             3. cargo-maven3-plugin    只用来「一条命令启动 Tomcat」，
+                                       不参与打包，删掉也不影响 mvn package
+          ======================================================================
+        -->
+        <plugins>
+
+            <!--
+              ======================= 插件一：编译 =======================
+              作用：指定按哪个 Java 版本编译、源码用什么编码。
+
+              为什么必须写：
+                Maven 默认绑定的编译插件是 3.1 版，而 3.6 之前的版本不认识
+                maven.compiler.release 属性，会退化成 source/target 1.5。
+                在 JDK 17 上执行 mvn package 会直接失败，报：
+                    「不支持源选项 5。请使用 7 或更高版本。」
+                显式声明 3.13.0 之后，release 属性才会生效。
+
+              两个参数：
+                release  → 编译级别，引用 pom 顶部的同名属性
+                encoding → 源码编码，不写的话中文注释在 Windows 上会乱码
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <!--
+              ======================= 插件二：打 war 包 =======================
+              作用：把 src/main/webapp 下的内容加上编译好的 class 打成 war。
+
+              为什么必须写：
+                虽然 packaging 已经声明为 war，Maven 会自动绑定默认版本的 war 插件，
+                但 Maven 3.8 默认绑的是 2.2 版（2010 年的老古董），
+                在 JDK 17 上执行 mvn package 会直接失败，报：
+                    「Unable to load the mojo 'war' ... Cannot access defaults
+                      field of Properties」
+                显式声明 3.4.0 之后即可正常打包。
+
+              failOnMissingWebXml 说明：
+                war 插件默认要求必须存在 web.xml，找不到就直接让构建失败。
+                这里显式设为 false，是为了将来你删掉 web.xml、
+                完全改用 @WebServlet 注解时，打包不会因此报错。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                    <warSourceDirectory>src/main/webapp</warSourceDirectory>
+                </configuration>
+            </plugin>
+
+            <!--
+              ==================== 插件三：一条命令启动 Tomcat ====================
+              作用：调用本机已经装好的 Tomcat，把当前项目部署进去并启动，
+                    不用手动 mvn package、再把 war 拷到 webapps。
+
+              用法（在项目根目录执行这一条命令就够了）：
+                  mvn clean package cargo:run
+
+                clean package  先清理并打包，产出 target/demo1.war
+                cargo:run      启动 Tomcat 并把该 war 部署进去，
+                               日志直接输出在当前控制台窗口
+                               启动后浏览器访问：
+                                   http://localhost:8080/demo1_war_exploded/
+
+              停止：在运行的这个窗口按 Ctrl + C，Tomcat 会一起关掉。
+
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              几个参数的含义：
+                containerId  tomcat11x 代表 Tomcat 11.x。
+                             如果换成 Tomcat 10.1，这里改成 tomcat10x。
+                home         指向 Tomcat 安装目录，取自 pom 顶部的 tomcat.home 属性。
+                             目录里要有 bin、conf、lib、webapps 这些子目录。
+                type=installed
+                             表示「用已装好的 Tomcat」，而不是让 Cargo 去下载。
+                 configuration 里的 type=standalone 表示
+                             Cargo 会在 target/cargo/config 下另建一套配置
+                             （含它自己的 server.xml）来启动，
+                             不会改动你 Tomcat 安装目录里的任何文件。
+                cargo.servlet.port
+                             启动端口，默认就是 8080；被占用时改这里。
+                deployables 里的 context
+                             部署后的上下文路径，也就是 URL 里 /demo1_war_exploded
+                             那一段。故意设成和 IDEA「war exploded」部署时的
+                             默认路径一模一样，这样两种方式的访问地址完全一致。
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              这种方式在 IntelliJ 社区版上同样可用。
+              （社区版没有旗舰版那种 Tomcat Server 运行配置，用这个最省事。）
+
+              不想用本机 Tomcat、希望自动下载一个的话，见下方注释里的另一种写法。
+            -->
+            <plugin>
+                <groupId>org.codehaus.cargo</groupId>
+                <artifactId>cargo-maven3-plugin</artifactId>
+                <version>1.10.29</version>
+                <configuration>
+                    <container>
+                        <containerId>tomcat11x</containerId>
+                        <type>installed</type>
+                        <home>${tomcat.home}</home>
+                    </container>
+                    <configuration>
+                        <type>standalone</type>
+                        <home>${project.build.directory}/cargo/config</home>
+                        <properties>
+                            <cargo.servlet.port>8080</cargo.servlet.port>
+                        </properties>
+                    </configuration>
+                    <!-- 部署后的上下文路径。不写这段的话，
+                         Cargo 会直接用 war 文件名做路径，也就是 /demo1 -->
+                    <deployables>
+                        <deployable>
+                            <groupId>com.example</groupId>
+                            <artifactId>demo1</artifactId>
+                            <type>war</type>
+                            <properties>
+                                <context>demo1_war_exploded</context>
+                            </properties>
+                        </deployable>
+                    </deployables>
+                </configuration>
+            </plugin>
+
+            <!--
+              附：不用本机 Tomcat，改成「让 Cargo 自动下载一个」的写法。
+              把上面插件里的 <home>${tomcat.home}</home> 那一行删掉，
+              换成下面这段即可（首次运行会下载到 target 下，之后复用）：
+
+                <zipUrlInstaller>
+                    <url>https://repo.maven.apache.org/maven2/org/apache/tomcat/tomcat/11.0.26/tomcat-11.0.26.zip</url>
+                    <downloadDir>${project.build.directory}/downloads</downloadDir>
+                    <extractDir>${project.build.directory}/extracts</extractDir>
+                </zipUrlInstaller>
+
+              这样做的好处是项目自带 Tomcat，换任何一台机器都能直接跑。
+            -->
+
+        </plugins>
+
+    </build>
+
+</project>
