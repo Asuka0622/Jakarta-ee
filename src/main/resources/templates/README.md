@@ -169,7 +169,59 @@ mvn clean package cargo:run -Dtomcat.home=D:/你的/tomcat目录
 
 **二、端口**
 
-默认 8080，被占用时改 `pom.xml` 里 cargo 配置中的 `cargo.servlet.port`。
+默认 8080。端口写在 `pom.xml` 里 cargo 插件的配置中：
+
+```xml
+<plugin>
+    <groupId>org.codehaus.cargo</groupId>
+    <artifactId>cargo-maven3-plugin</artifactId>
+    <configuration>
+        <!-- 省略 container、configuration 等其它配置 -->
+        <properties>
+            <cargo.servlet.port>8080</cargo.servlet.port>   <!-- 改这一行 -->
+        </properties>
+    </configuration>
+</plugin>
+```
+
+**改法一（推荐）：改 `pom.xml`。** 改成 8081 后重新执行 `mvn clean package cargo:run`，
+访问地址随之变成 <http://localhost:8081/demo1_war_exploded/>。
+
+好处是三种启动方式（IDEA 右上角绿色三角、双击 `start-tomcat.bat`、命令行）会自动保持一致，
+不会出现「某个入口还是旧端口」的情况。
+
+**改法二：不改文件，临时覆盖。**
+
+```bash
+mvn clean package cargo:run -Dcargo.servlet.port=8081
+```
+
+在 IDEA 里则是改运行配置：`Run` → `Edit Configurations` → 选中「启动 Tomcat（demo1）」，
+在 **Goals** 输入框里追加 `-Dcargo.servlet.port=8081`，整行变成
+`clean package cargo:run -Dcargo.servlet.port=8081`。
+
+**同时跑两个项目时，还得改第二个端口。** cargo 除了 8080 还会占用一个
+`cargo.rmi.port`（默认 8205），只改 8080 会启动失败并报
+`Port number 8205 ... is in use`，所以两个都要改：
+
+```bash
+mvn clean package cargo:run -Dcargo.servlet.port=8081 -Dcargo.rmi.port=8206
+```
+
+**旗舰版用户注意**：IDEA 旗舰版的 `Tomcat Server` 运行配置有它自己的 `HTTP port`
+（`Run` → `Edit Configurations` → `Tomcat Server` → `Server` 页签）。
+那是 IDEA 启动 Tomcat 时用的，和 `pom.xml` 里的 cargo 配置**互不影响**，
+两种方式都用的话两处都要改，否则总有一种方式地址对不上。
+（社区版没有 `Tomcat Server` 运行配置，只需要改 `pom.xml`。）
+
+**8080 被谁占着？** 在命令行执行：
+
+```
+netstat -ano | findstr :8080
+```
+
+最后一列是占用者的进程 PID，到任务管理器里结束它即可 —— 多半是上一次没关干净的 Tomcat。
+不想关它就按上面的办法换个端口。
 
 > Cargo 会在 `target/cargo/config` 下另建一套独立的 Tomcat 配置来运行，
 > **不会**改动你 Tomcat 安装目录里的任何文件，也不会把 war 拷进它的 webapps。
