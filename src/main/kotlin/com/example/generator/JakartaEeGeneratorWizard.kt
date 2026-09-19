@@ -61,12 +61,19 @@ class JakartaEeGeneratorWizard : GeneratorNewProjectWizard {
             propertyGraph.property(TemplateGenerator.DEFAULT_APP_NAME)
 
         override fun setupUI(builder: Panel) {
+            // 默认跟随用户在向导第一页填的项目名，避免出现
+            // 「项目文件夹叫 demo2、里面却全是 demo1，于是 /demo2_war_exploded/ 404」这种不一致。
+            // 只在用户还没动过这个框时预填，改过的值不会被覆盖。
+            if (appName.get() == TemplateGenerator.DEFAULT_APP_NAME) {
+                appName.set(TemplateGenerator.sanitizeAppName(context.projectName))
+            }
+
             builder.row("应用名：") {
                 textField()
                     .bindText(appName)
                     .comment(
-                        "决定项目名与访问路径。只用字母、数字、- 和 _，" +
-                            "生成的地址是 http://localhost:8080/（应用名）_war_exploded/"
+                        "默认与项目名相同，可改。只允许字母、数字、- 和 _，" +
+                            "访问地址是 http://localhost:8080/（应用名）_war_exploded/"
                     )
             }
         }
