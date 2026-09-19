@@ -22,6 +22,9 @@ object TemplateGenerator {
      */
     private const val TOMCAT_HOME_TOKEN = "@@TOMCAT_HOME@@"
 
+    /** 模板里写死的默认应用名；生成时整体替换成用户在向导里填的名字 */
+    const val DEFAULT_APP_NAME = "demo1"
+
     /**
      * 要生成的文件清单，路径相对于项目根目录，
      * 与 resources/templates 下的目录结构完全一致（同名同层级）。
@@ -46,10 +49,13 @@ object TemplateGenerator {
     /**
      * 把插件内置的模板文件逐个拷贝到目标项目目录。
      *
-     * 默认按字节读写（不做字符串转换），这样 UTF-8 的中文注释不会被二次编码弄乱。
-     * 只有 pom.xml 需要做一次文本替换（填 Tomcat 路径），它本身是 UTF-8，安全。
+     * 模板都是 UTF-8 纯文本，统一按「读成字符串 → 替换 → 写回 UTF-8」处理。
+     * 这种往返对合法 UTF-8 是无损的，中文注释不会被二次编码弄乱。
+     *
+     * @param appName 应用名，见 [sanitizeAppName]；决定项目名与访问路径
      */
-    fun generateFiles(basePath: Path) {
+    fun generateFiles(basePath: Path, appName: String = DEFAULT_APP_NAME) {
+        val app = sanitizeAppName(appName)
         val tomcatHome = TomcatLocator.findTomcat()?.path?.replace('\\', '/')
             ?: TomcatLocator.PLACEHOLDER
 
@@ -60,16 +66,34 @@ object TemplateGenerator {
                 ?.use { it.readBytes() }
                 ?: error("插件内置模板缺失：$resource")
 
-            val content = if (relative == "pom.xml") {
-                String(bytes, Charsets.UTF_8).replace(TOMCAT_HOME_TOKEN, tomcatHome).toByteArray(Charsets.UTF_8)
-            } else {
-                bytes
+            var text = String(bytes, Charsets.UTF_8)
+            if (app != DEFAULT_APP_NAME) {
+                // 模板正文里凡是提到应用名的地方都写作 demo1（例如 demo1_war_exploded、
+                // com.example:demo1、target/demo1.war），整体替换即可，
+                // artifactId、war 文件名、上下文路径和文档里的地址会一起改过来
+                text = text.replace(DEFAULT_APP_NAME, app)
+            }
+            if (relative == "pom.xml") {
+                text = text.replace(TOMCAT_HOME_TOKEN, tomcatHome)
             }
 
             val target = basePath.resolve(relative)
             // 目标可能位于多层子目录（如 src/main/java/...），父目录需先建好
             target.parent?.let { Files.createDirectories(it) }
-            Files.write(target, content)
+            Files.write(target, text.toByteArray(Charsets.UTF_8))
         }
+    }
+
+    /**
+     * 规范化用户在向导里填的应用名。
+     *
+     * 这个名字会被用作 Maven 的 artifactId、war 文件名、部署后的上下文路径，
+     * 还会写进 start-tomcat.bat 和 pom 的注释里，出现空格、中文、斜杠等字符
+     * 会让 Maven 构建失败或让 bat 跑不起来，所以只保留字母、数字、- 和 _；
+     * 清完为空、或首字符不是字母（Maven 不允许数字开头）就退回默认名。
+     */
+    fun sanitizeAppName(raw: String?): String {
+        val cleaned = raw.orEmpty().trim().replace(Regex("[^A-Za-z0-9_-]"), "")
+        return if (cleaned.isEmpty() || !cleaned[0].isLetter()) DEFAULT_APP_NAME else cleaned
     }
 }

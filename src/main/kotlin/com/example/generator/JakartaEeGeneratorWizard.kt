@@ -7,8 +7,11 @@ import com.intellij.ide.wizard.NewProjectWizardBaseStep
 import com.intellij.ide.wizard.NewProjectWizardChainStep
 import com.intellij.ide.wizard.NewProjectWizardStep
 import com.intellij.ide.wizard.RootNewProjectWizardStep
+import com.intellij.openapi.observable.properties.GraphProperty
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
+import com.intellij.ui.dsl.builder.Panel
+import com.intellij.ui.dsl.builder.bindText
 import java.nio.file.Paths
 import javax.swing.Icon
 
@@ -42,15 +45,37 @@ class JakartaEeGeneratorWizard : GeneratorNewProjectWizard {
             .nextStep { parent -> JakartaEeProjectStep(parent) }
 
     /**
-     * 无设置项：仅挂一条步骤链，在 setupProject 里往项目目录写模板文件。
+     * 生成器的最后一步：在向导第二页多出一个「应用名」输入框，
+     * 同时在 setupProject 里把模板文件写进项目目录。
      */
     class JakartaEeProjectStep(private val parent: NewProjectWizardStep) : AbstractNewProjectWizardStep(parent) {
+
+        /**
+         * 应用名。它决定了三样东西：
+         *   · Maven 的 artifactId 与打出来的 war 文件名
+         *   · 部署后的上下文路径，也就是访问地址里 /xxx_war_exploded 那一段
+         *   · 模板正文里所有提到项目名的地方
+         * 用 GraphProperty 是为了能直接和输入框双向绑定（改框里的字，属性跟着变）。
+         */
+        private val appName: GraphProperty<String> =
+            propertyGraph.property(TemplateGenerator.DEFAULT_APP_NAME)
+
+        override fun setupUI(builder: Panel) {
+            builder.row("应用名：") {
+                textField()
+                    .bindText(appName)
+                    .comment(
+                        "决定项目名与访问路径。只用字母、数字、- 和 _，" +
+                            "生成的地址是 http://localhost:8080/（应用名）_war_exploded/"
+                    )
+            }
+        }
 
         override fun setupProject(project: Project) {
             // 向导执行到此时项目已创建，basePath 即用户选择的目录
             val base = project.basePath ?: return
             // 生成逻辑在 TemplateGenerator 里（不依赖平台，可脱离 IDE 单独测试）
-            TemplateGenerator.generateFiles(Paths.get(base))
+            TemplateGenerator.generateFiles(Paths.get(base), appName.get())
         }
     }
 }
