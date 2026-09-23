@@ -1,0 +1,5 @@
+<%-- 公共头部片段，给 include 指令演示用 --%>
+<div style="background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white;
+            padding: 12px 20px; border-radius: 6px; font-size: 14px;">
+    🎉 这是从 common/header.jspf 包含进来的公共头部 —— 全站统一，一处修改全站生效
+</div>

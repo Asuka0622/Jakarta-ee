@@ -1,0 +1,35 @@
+<idea-plugin>
+    <id>com.asuka.jakartaee.generator</id>
+    <name>saber</name>
+    <version>1.3.2</version>
+    <vendor email="2846517399@qq.com">Example</vendor>
+
+    <description><![CDATA[
+<p>One-click generator for Jakarta-EE Web, JSP, and static HTML templates.</p >
+<p>Adds <b>Jakarta EE Web 模板</b>, <b>JSP 教学模板</b> and <b>HTML 静态页面</b> options to the New Project panel.</p >
+<p>Works on IntelliJ IDEA Community Edition (IC). It only generates local disk files and does not require the Ultimate edition's EE syntax support.</p >
+]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- 2026 版「新建项目」生成器：让条目出现在左侧「生成器」面板 -->
+        <newProjectWizard.generator implementation="com.asuka.jakartae.generator.JakartaEeGeneratorWizard"/>
+        <newProjectWizard.generator implementation="com.asuka.jakartae.generator.JspGeneratorWizard"/>
+        <newProjectWizard.generator implementation="com.asuka.jakartae.generator.StaticHtmlGeneratorWizard"/>
+    </extensions>
+
+    <actions>
+        <!--
+          环境体检：生成的项目启动 Tomcat 失败时，用它先查一遍。
+          检查 tomcat.home 目录与本地 Maven 仓库里的 cargo 依赖是否齐全，
+          缺哪个 jar 会直接列出来并给出修复命令。
+        -->
+        <action id="com.asuka.jakartaee.generator.CheckEnvironmentAction"
+                class="com.asuka.jakartae.generator.CheckEnvironmentAction"
+                text="检查 Tomcat / cargo 运行环境"
+                description="检查 tomcat.home 与本地 Maven 仓库中的 cargo 依赖是否就绪">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

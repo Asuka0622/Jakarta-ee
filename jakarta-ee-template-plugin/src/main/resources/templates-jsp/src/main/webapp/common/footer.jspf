@@ -1,0 +1,5 @@
+<%-- 公共页脚片段，给动态 include 演示用 --%>
+<div style="background: linear-gradient(90deg, #0ea5e9, #06b6d4); color: white;
+            padding: 12px 20px; border-radius: 6px; font-size: 14px;">
+    📢 这是从 common/footer.jspf 动态包含进来的公共页脚 —— 每次请求都会重新执行
+</div>

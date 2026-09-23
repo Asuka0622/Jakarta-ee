@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  web.xml —— JSP 项目部署描述文件
+  欢迎页设为 index.jsp（JSP 首页）。
+  metadata-complete=false，支持注解方式注册 Servlet/Filter。
+-->
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0"
+         metadata-complete="false">
+
+    <display-name>demo1</display-name>
+
+    <!-- 欢迎页：访问根路径时默认打开 index.jsp -->
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <!--
+      编码其一：让响应头直接声明 UTF-8。
+      Tomcat 自带的 mime-mapping 把 html 定义成 text/html（不带 charset），
+      静态页面只能靠页面里的 <meta charset> 让浏览器去猜；
+      下面几条把它补成 Content-Type: text/html;charset=UTF-8。
+      应用自己写的 mime-mapping 会覆盖 Tomcat 全局那份，不会冲突。
+    -->
+    <mime-mapping>
+        <extension>html</extension>
+        <mime-type>text/html;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>css</extension>
+        <mime-type>text/css;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>js</extension>
+        <mime-type>application/javascript;charset=UTF-8</mime-type>
+    </mime-mapping>
+
+    <!--
+      编码其二：给所有 JSP 兜底。
+      *.jsp 一律按 UTF-8 解析、响应也声明 UTF-8。
+      本模板每个 JSP 都写了
+          <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+      所以这一条平时不生效，只是保证以后新增的页面漏写时也不会乱码。
+    -->
+    <jsp-config>
+        <jsp-property-group>
+            <url-pattern>*.jsp</url-pattern>
+            <page-encoding>UTF-8</page-encoding>
+            <default-content-type>text/html;charset=UTF-8</default-content-type>
+        </jsp-property-group>
+    </jsp-config>
+
+</web-app>

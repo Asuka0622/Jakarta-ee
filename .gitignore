@@ -48,3 +48,15 @@ _*.txt
 # ===================== 其他 =====================
 .DS_Store
 *.log
+
+# ===================== 插件签名证书与私钥（绝不进仓库） =====================
+*.key
+*.crt
+*.p12
+*.pem
+jakarta-ee-template-plugin/private.key
+jakarta-ee-template-plugin/chain.crt
+
+# ===================== 旧构建产物与临时目录 =====================
+jakarta-ee-template-plugin/lib/
+jakarta-ee-template-plugin/jakartaee-project-generator/

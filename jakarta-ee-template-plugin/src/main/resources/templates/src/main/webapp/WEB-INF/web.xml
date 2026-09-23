@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+   web.xml —— 部署描述文件（Deployment Descriptor）
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   Tomcat 启动时会读这个文件，用来知道：
+     1. 应用的显示名
+     2. 访问根路径时默认打开哪个页面（欢迎页）
+     3. Servlet 的 URL 映射（本模板改用注解，见文件末尾说明）
+     4. 全局初始化参数、会话超时、错误页等
+
+   位置：src/main/webapp/WEB-INF/web.xml
+   ⚠️ 必须放在 WEB-INF 目录下。WEB-INF 是受保护目录，
+      浏览器无法直接访问其中的文件，只能由服务端转发访问，
+      所以配置文件和 Java 类都放在这里最安全。
+
+   本文件只保留「最基础也最必要」的两项配置（显示名、欢迎页），
+   会话超时与全局参数写在文件下方的注释里，需要时取消注释即可。
+
+   ⚠️ XML 语法提醒：XML 注释内部不允许出现连续两个减号，
+      所以本文件里所有分隔线都用波浪号或等号，请勿改成减号。
+  ============================================================================
+-->
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0"
+         metadata-complete="false">
+
+    <!--
+      version="6.0"
+          对应 Jakarta Servlet 6.0（Jakarta EE 10）。Tomcat 10.1 实现该版本；
+          Tomcat 11 是 6.1，向下兼容 6.0 的应用，可以直接部署。
+      metadata-complete="false"
+          false（默认）= 容器启动时会扫描 class 文件上的注解，
+                         @WebServlet / @WebFilter / @WebListener 才会生效。
+          true          = 完全以本文件为准，忽略所有注解。
+          本模板的 Servlet 全部用注解注册，所以必须是 false。
+    -->
+
+    <!-- 应用显示名。出现在 Tomcat 管理台和日志里，方便识别 -->
+    <display-name>demo1</display-name>
+
+    <!--
+      ============================ 欢迎页 ============================
+      访问「应用根路径」时（例如 http://localhost:8080/demo1_war_exploded/），
+      容器按顺序挨个查找下面的文件，找到第一个就返回给浏览器。
+      注意：写的是相对于 webapp 根目录的路径，不要带开头的斜杠。
+    -->
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <!--
+      ==================== 编码其一：让响应头直接声明 UTF-8 ====================
+      Tomcat 自带的 mime-mapping 把 html 定义成 text/html（不带 charset），
+      静态页面就只能靠页面里的 <meta charset> 让浏览器去猜编码，
+      换个浏览器或经过代理时就可能出现乱码。下面几条把它补成：
+          Content-Type: text/html;charset=UTF-8
+      浏览器拿到的是权威声明，不用再猜。
+      应用自己写的 mime-mapping 会覆盖 Tomcat 全局那份，不会冲突。
+    -->
+    <mime-mapping>
+        <extension>html</extension>
+        <mime-type>text/html;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>css</extension>
+        <mime-type>text/css;charset=UTF-8</mime-type>
+    </mime-mapping>
+    <mime-mapping>
+        <extension>js</extension>
+        <mime-type>application/javascript;charset=UTF-8</mime-type>
+    </mime-mapping>
+
+    <!--
+      ==================== 编码其二：给所有 JSP 兜底 ====================
+      指定 *.jsp 一律按 UTF-8 解析、响应也声明 UTF-8。
+      页面上写了 <%@ page pageEncoding="UTF-8" %> 的以页面自己为准，
+      这里只是保证以后新增的 JSP 万一漏写也不会乱码。
+    -->
+    <jsp-config>
+        <jsp-property-group>
+            <url-pattern>*.jsp</url-pattern>
+            <page-encoding>UTF-8</page-encoding>
+            <default-content-type>text/html;charset=UTF-8</default-content-type>
+        </jsp-property-group>
+    </jsp-config>
+
+    <!--
+      ========================================================================
+       【进阶 · 当前已注释】以下两项配置取消注释即可启用
+      ========================================================================
+
+      ～～～～～～～～～～～～ 一、会话配置 ～～～～～～～～～～～～
+      session-timeout 单位是「分钟」。
+      用户 30 分钟没有任何操作，服务端就丢弃它的 HttpSession。
+      设为 0 或负数表示永不过期（生产环境不建议这么干）。
+
+        <session-config>
+            <session-timeout>30</session-timeout>
+        </session-config>
+
+      ～～～～～～～～～～～～ 二、全局初始化参数 ～～～～～～～～～～～～
+      context-param 是「整个应用」级别的配置，所有 Servlet 都能读到：
+
+          getServletContext().getInitParameter("appName")
+
+      它和 Servlet 自己的 init-param 区别在于作用范围：
+          context-param → 全应用共享（写在 web-app 直接子级）
+          init-param    → 只属于某一个 Servlet（写在 servlet 内部）
+      适合放数据库地址、第三方密钥等「需要集中管理」的配置。
+
+      注意：HelloServlet 会尝试读取名为 appName 的这个参数。
+            本段处于注释状态时，它读到 null，会自动使用兜底默认值，
+            所以页面不会报错，只是显示的是「Jakarta EE 教学模板」这个默认值。
+
+        <context-param>
+            <param-name>appName</param-name>
+            <param-value>Jakarta EE 教学模板</param-value>
+        </context-param>
+
+      ========================================================================
+    -->
+
+    <!--
+      ========================================================================
+       附录：两种「传统写法」对照，本模板没有启用，留给你比较学习。
+       （启用时把外层注释去掉即可，它们与注解可以共存，
+         但同时用两种方式注册同一个 URL 会启动报错。）
+
+      【写法一】在 web.xml 里注册 Servlet（等价于 @WebServlet 注解）
+
+        <servlet>
+            <servlet-name>hello</servlet-name>
+            <servlet-class>com.example.demo.HelloServlet</servlet-class>
+            <load-on-startup>1</load-on-startup>
+        </servlet>
+        <servlet-mapping>
+            <servlet-name>hello</servlet-name>
+            <url-pattern>/hello</url-pattern>
+        </servlet-mapping>
+
+      【写法二】错误页：访问不存在的地址或服务端抛异常时，跳转到指定页面
+
+        <error-page>
+            <error-code>404</error-code>
+            <location>/404.html</location>
+        </error-page>
+        <error-page>
+            <exception-type>java.lang.Throwable</exception-type>
+            <location>/500.html</location>
+        </error-page>
+
+        注意：location 指向的页面必须真实存在，否则错误页本身也会 404。
+      ========================================================================
+    -->
+
+</web-app>
